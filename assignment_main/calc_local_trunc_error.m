@@ -1,60 +1,28 @@
-function [local_trunc_error, local_h_diff] = calc_local_trunc_error(solver, rate_func_in, analytical_soln, t, h)
+% Calculates the local truncation error for a generic RK method
+%
+% INPUTS:
+% rate_func_in:  handle to rate function, f(t, X)
+% analytical_soln: handle to the exact analytical solution X(t)
+% t:  current time
+% h:  step size
+% BT_struct: struct with fields A, B, C (Butcher tableau)
+%
+% OUTPUTS:
+% local_trunc_error: norm of (numerical - analytical) local error
+% local_h_diff: norm of (exact step size change)
+function [local_trunc_error, local_h_diff] = calc_local_trunc_error(rate_func_in, analytical_soln, t, h, BT_struct)
+    % get current state from the analytical solution
+    XA = analytical_soln(t);
     
-    % Get the current state from the analytical solution
-    XA = analytical_soln(t); % start from exact initial condition
-
-    % Analytical next step
+    % get next state from the analytical solution
     XB_ana = analytical_soln(t + h);
-    switch solver
-        case 'ForwardEuler'
-            % Compute derivative at current state
-            dXdt = rate_func_in(t, XA);
 
-            % Numerical next step
-            XB_num = XA + h*dXdt;
+    % compute next step approx using given RK method
+    [XB_num, ~] = explicit_RK_step(rate_func_in, t, XA, h, BT_struct);
 
-        case 'ExplicitMidpoint'
-            % Derivative at current state
-            dXdt_1 = rate_func_in(t, XA);
-
-            % Midpoint estimate
-            XB_half = XA + (h/2) * dXdt_1;
-
-            % Derivative at midpoint
-            dXdt_2 = rate_func_in(t + h/2, XB_half);
-
-            % Numerical next step
-            XB_num = XA + h*dXdt_2;
-
-        case 'BackwardEuler'
-            % initializing solver params
-            solver_params.approx_j = 1;
-            
-            % setting up implicit equation to numerically solve for XB
-            solve_for_XB_implicit = @(XB) XA + h*rate_func_in(t + h, XB) - XB;
-            
-            % numerically solving for XB
-            [XB_num, ~] = multivariate_newton_solver(solve_for_XB_implicit, XA, solver_params);
-
-        case 'ImplicitMidpoint'
-            % initializing solver params
-            solver_params.approx_j = 1;
-            
-            % setting up implicit equation to numerically solve for XB
-            solve_for_XB_implicit = @(XB) XA + h*rate_func_in(t + 0.5*h, 0.5*(XA + XB)) - XB;
-            
-            % numerically solving for XB
-            [XB_num, ~] = multivariate_newton_solver(solve_for_XB_implicit, XA, solver_params);
-
-        otherwise
-            warning('Invalid method');
-            local_trunc_error = NaN;
-            return;
-    end
-
-    % calculating local truncation error
+    % compute local truncation error
     local_trunc_error = norm(XB_num - XB_ana);
 
-    % calcaulting local timestep difference based on analytical sol'n
-    local_h_diff = norm(analytical_soln(t+h) - analytical_soln(t));
+    % Compute difference in the analytical trajectory over one step
+    local_h_diff = norm(XB_ana - XA);
 end
