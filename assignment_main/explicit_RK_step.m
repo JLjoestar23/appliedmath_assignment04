@@ -18,41 +18,34 @@
 % num_evals: A count of the number of times that you called
 % rate_func_in when computing the next step
 function [XB, num_evals] = explicit_RK_step(rate_func_in, t, XA, h, BT_struct)
-
+    
+    % parse the struct
+    A = BT_struct.A;
+    B = BT_struct.B;
+    C = BT_struct.C;
+    
     % order of the chosen method
-    order = length(BT_struct.C);
+    stages = length(BT_struct.C);
+    n = length(XA);
 
     % pre-allocate vector of approximations
     % length of vector should match the order
-    K = zeros(order, 1);
+    K = zeros(n, stages);
     
-    % solve for the initial K_1 approx
-    K(1) = rate_func_in(t, XA);
-    
-    num_evals = 1; % update to 1 eval
-    
-    % loop through to solve each following K_i approx
-    for i=2:order
-        % initialize the summed a_{i,j} * k_j term
-        sum_approx = 0;
-        % update the summed term accordingly
-        for j=1:order-1
-            sum_approx = sum_approx + BT_struct.A(i, j) * K(j);
-        end
-        % update the current K approx
-        K(i) = rate_func_in(t + c(i)*h, XA + h*sum_approx);
-        num_evals = num_evals + 1; % update with additional evals
+    for i=1:stages
+        % evaluate the sum of a_{i,j}*k_j terms as dot product
+        sum_val1 = K*(A(i, :)');
+        % evaluate the ith K approx
+        K(:, i) = rate_func_in(t + C(i)*h, XA + h*(sum_val1));
     end
-    
-    % initialize the summed b_i * K_i term
-    lin_combo = 0;
-    
-    % iterate and update the summed term
-    for i=1:order
-        lin_combo = lin_combo + b(i)*K(i);
-    end
-    
-    % use values to approximate the next timestep
-    XB = XA + h*lin_combo;
+
+    % evaluate the sum of b_i*k_i terms
+    sum_val2 = K*B';
+
+    % evaluate the next timestep approx
+    XB = XA + h*sum_val2;
+
+    % number of evals should equal the number of stages
+    num_evals = stages;
 
 end
