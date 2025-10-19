@@ -112,5 +112,36 @@ analytical_soln = @(t) compute_planetary_motion(t, V0, orbit_params);
 
 local_trunc_error_analysis(BT_list, rate_func_in, analytical_soln, t_ref, num_trials);
 
+%% Global truncation error analysis
 
+% define physical/orbital parameters
+orbit_params = struct();
+orbit_params.m_sun = 1.9891e30; % mass of sun (kg)
+orbit_params.m_planet = 5.972e24; % mass of earth (kg)
+orbit_params.G = 6.6743e-11; % gravitational constant
 
+% define initial conditions for a circular orbit
+x0 = 1.495978707e11; % 1 astronomical unit in meters
+y0 = 0;
+r0 = sqrt(x0^2 + y0^2);
+
+% calculate velocity required for circular orbit (e = 0)
+% choose arbitrarily scaled down velocity for elliptical orbit
+scale_factor = 0.7;
+v0 = scale_factor*sqrt(orbit_params.G * orbit_params.m_sun / sqrt(x0^2 + y0^2));
+vx0 = 0; % velocity perpendicular to radius
+vy0 = v0; % counterclockwise motion
+
+V0 = [x0; y0; vx0; vy0]; % initial state vector
+
+% define time span (semi-arbirtarily)
+a = r0; % semi-major axis is equivalent to radius of orbit
+T_orbit = pi*sqrt(a^3/(orbit_params.G*orbit_params.m_sun));
+
+tspan = [0, T_orbit];
+
+BT_list = {Heun2, VanDerHouwenWray3, ClassicRK4}; % define RK method list
+rate_func_in = @(t,V) gravity_rate_func(t, V, orbit_params); % define rate function handle
+analytical_soln = @(t) compute_planetary_motion(t, V0, orbit_params);
+
+global_trunc_error_analysis(BT_list, rate_func_in, analytical_soln, tspan, num_trials);
