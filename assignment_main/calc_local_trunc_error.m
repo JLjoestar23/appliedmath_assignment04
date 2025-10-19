@@ -10,7 +10,7 @@
 % OUTPUTS:
 % local_trunc_error: norm of (numerical - analytical) local error
 % local_h_diff: norm of (exact step size change)
-function [local_trunc_error, local_h_diff] = calc_local_trunc_error(rate_func_in, analytical_soln, t, h, BT_struct)
+function [local_trunc_error, local_h_diff] = calc_local_trunc_error(BT_struct, rate_func_in, analytical_soln, t, h)
     % get current state from the analytical solution
     XA = analytical_soln(t);
     

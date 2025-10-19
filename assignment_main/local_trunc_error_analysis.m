@@ -42,7 +42,7 @@ function local_trunc_error_analysis(BT_struct_list, rate_func, analytical_soln, 
         % compute local truncation errors for this method
         for j = 1:num_trials
             [local_truncation_errors(i, j), local_h_diff(j)] = ...
-                calc_local_trunc_error(rate_func, analytical_soln, t_ref, h_list(j), BT_struct);
+                calc_local_trunc_error(BT_struct, rate_func, analytical_soln, t_ref, h_list(j));
         end
 
         % perform linear regression in log–log space (middle 60%)
