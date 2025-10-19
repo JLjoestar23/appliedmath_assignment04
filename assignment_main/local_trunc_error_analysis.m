@@ -22,32 +22,32 @@
 % OUTPUTS:
 %   loglog plot representing Global Truncation Error vs. Step Size (h)
 
-function local_trunc_error_analysis(BT_struct_list, rate_func, analytical_soln, t_ref, num_trials)
+function local_trunc_error_analysis(BT_list, rate_func, analytical_soln, t_ref, num_trials)
     
     % initialize step sizes (log-spaced)
     h_list = logspace(3, 7, num_trials); % seconds
     
     % initialize storage
-    local_truncation_errors = zeros(length(BT_struct_list), num_trials);
-    local_h_diff = zeros(1, length(BT_struct_list));
+    local_truncation_errors = zeros(length(BT_list), num_trials);
+    local_h_diff = zeros(1, length(BT_list));
     
     % plot style presets
     error_data_presets = {'r.', 'b.', 'm.'};
     line_fit_presets = {'g--', 'c--', 'y--'};
 
     % loop through methods
-    for i = 1:length(BT_struct_list)
-        BT_struct = BT_struct_list{i};
+    for i = 1:length(BT_list)
+        BT = BT_list{i};
         
         % compute local truncation errors for this method
         for j = 1:num_trials
             [local_truncation_errors(i, j), local_h_diff(j)] = ...
-                calc_local_trunc_error(BT_struct, rate_func, analytical_soln, t_ref, h_list(j));
+                calc_local_trunc_error(BT, rate_func, analytical_soln, t_ref, h_list(j));
         end
 
         % perform linear regression in log–log space (middle 60%)
         start_i = floor(0.3*num_trials);
-        end_i   = floor(0.6*num_trials);
+        end_i   = floor(0.7*num_trials);
 
         log_h_list = log10(h_list(start_i:end_i));
         log_local_trunc_errors = log10(local_truncation_errors(i, start_i:end_i));
@@ -58,7 +58,7 @@ function local_trunc_error_analysis(BT_struct_list, rate_func, analytical_soln, 
 
         % plot actual data
         loglog(h_list, local_truncation_errors(i,:), error_data_presets{i}, ...
-               'MarkerSize', 5, 'DisplayName', BT_struct.name);
+               'MarkerSize', 5, 'DisplayName', BT.name);
         hold on;
 
         % plot linear fit
