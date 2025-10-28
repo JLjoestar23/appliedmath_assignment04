@@ -145,3 +145,102 @@ rate_func_in = @(t,V) gravity_rate_func(t, V, orbit_params); % define rate funct
 analytical_soln = @(t) compute_planetary_motion(t, V0, orbit_params);
 
 global_trunc_error_analysis(BT_list, rate_func_in, analytical_soln, tspan, num_trials);
+
+%% Analysis on differently ordered next step estimates
+
+% Dormand Prince Butcher Tableau
+DormandPrince = struct();
+DormandPrince.C = [0, 1/5, 3/10, 4/5, 8/9, 1, 1];
+DormandPrince.B = [35/384, 0, 500/1113, 125/192, -2187/6784, 11/84, 0;...
+                    5179/57600, 0, 7571/16695, 393/640, -92097/339200, 187/2100, 1/40];
+DormandPrince.A = [0,0,0,0,0,0,0;
+                    1/5, 0, 0, 0,0,0,0;...
+                    3/40, 9/40, 0, 0, 0, 0,0;...
+                    44/45, -56/15, 32/9, 0, 0, 0,0;...
+                    19372/6561, -25360/2187, 64448/6561, -212/729, 0, 0,0;...
+                    9017/3168, -355/33, 46732/5247, 49/176, -5103/18656, 0,0;...
+                    35/384, 0, 500/1113, 125/192, -2187/6784, 11/84,0];
+
+% initializing function handles
+rate_func_in = @rate_func02;
+analytical_soln = @solution02;
+
+% number of points to plot
+num_trials = 1000;
+
+% arbitrary time
+t = 0.314;
+
+% initialize step sizes (log-spaced)
+h_list = logspace(-6, 1, num_trials); % seconds
+
+% initialize storage
+loc_trunc_err_1 = zeros(1, num_trials);
+loc_trunc_err_2 = zeros(1, num_trials);
+order_diff = zeros(1, num_trials);
+local_h_diff = zeros(1, num_trials);
+
+% plot style presets
+error_data_presets = {'r.', 'b.', 'm-', 'k-'};
+
+% compute local truncation errors for this method
+for i = 1:num_trials
+    % get current state from the analytical solution
+    XA = analytical_soln(t);
+
+    % get next state from the analytical solution
+    XB_ana = analytical_soln(t + h_list(i));
+
+    % compute both embedded next timestep estimates
+    [XB1, XB2, ~] = embedded_RK_step(rate_func_in, t, XA, h_list(i), DormandPrince);
+    
+    % compute both local truncation errors
+    loc_trunc_err_1(i) = norm(XB1 - XB_ana);
+    loc_trunc_err_2(i) = norm(XB2 - XB_ana);
+
+    % compute abs diff between 2 estimates
+    order_diff(i) = norm(loc_trunc_err_1 - loc_trunc_err_2);
+
+    % Compute difference in the analytical trajectory over one step
+    local_h_diff(i) = norm(XB_ana - XA);
+end
+
+% plot data as a function of h
+figure();
+loglog(h_list, loc_trunc_err_1, 'r.', 'MarkerSize', 5, 'DisplayName', 'XB1 error');
+hold on;
+loglog(h_list, loc_trunc_err_2, 'b.', 'MarkerSize', 5, 'DisplayName', 'XB2 error');
+loglog(h_list, order_diff, 'm--', 'LineWidth', 2, 'DisplayName', '|XB1-XB2|');
+loglog(h_list, local_h_diff, 'k--', 'LineWidth', 2, 'DisplayName', 'timestep difference');
+
+% labels and aesthetics
+title('Local Truncation Error vs. Step Size');
+xlabel('Timestep (s)');
+ylabel('Local Truncation Error');
+legend('Location', 'northwest');
+grid on;
+axis tight;
+hold off;
+
+% finding slopes of loc trunc err
+start= 0.6 * num_trials;
+fin = 0.8 * num_trials;
+[p1, ~] = polyfit(log10(h_list(start:fin)), log10(loc_trunc_err_1(start:fin)), 1);
+[p2, ~] = polyfit(log10(h_list(start:fin)), log10(loc_trunc_err_2(start:fin)), 1);
+fprintf('Estimated Local Truncation Error Order: XB1 = %.2f, XB2 = %.2f\n', p1(1), p2(1));
+
+% plot data as a function of |XB1-XB2|
+figure();
+loglog(order_diff, loc_trunc_err_1, 'r.', 'MarkerSize', 5, 'DisplayName', 'XB1 error');
+hold on;
+loglog(order_diff, loc_trunc_err_2, 'b.', 'MarkerSize', 5, 'DisplayName', 'XB2 error');
+
+% labels and aesthetics
+title('Local Truncation Error vs. Order Difference');
+xlabel('|XB1-XB2|');
+ylabel('Local Truncation Error');
+legend('Location', 'northwest');
+grid on;
+axis tight;
+hold off;
+hold off;
