@@ -30,7 +30,7 @@ function [t_list, X_list, h_avg, num_evals] = explicit_RK_fixed_step_integration
     X_list(:, 1) = X0;
 
     num_evals = 0; % initialize counter
-
+    
     for i = 1:N
         % Evaluate next step
         [XB, evals] = explicit_RK_step(rate_func_in, t_list(i), X_list(:, i), h_avg, BT_struct);
