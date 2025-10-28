@@ -32,6 +32,7 @@ function [XB, num_evals] = explicit_RK_step(rate_func_in, t, XA, h, BT_struct)
     % length of vector should match the order
     K = zeros(n, stages);
     
+    % compute all K_i stages
     for i=1:stages
         % evaluate the sum of a_{i,j}*k_j terms as dot product
         sum_val1 = K*(A(i, :)');
@@ -42,7 +43,7 @@ function [XB, num_evals] = explicit_RK_step(rate_func_in, t, XA, h, BT_struct)
     % evaluate the sum of b_i*k_i terms
     sum_val2 = K*B';
 
-    % evaluate the next timestep approx
+    % evaluate the next timestep estimate
     XB = XA + h*sum_val2;
 
     % number of evals should equal the number of stages
