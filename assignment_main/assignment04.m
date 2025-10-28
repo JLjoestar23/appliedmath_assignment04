@@ -67,7 +67,7 @@ figure;
 hold on;
 for i=1:length(BT_list)
     % call the corresponding RK method
-    [t_list, V_list, h_avg, num_evals] = explicit_RK_fixed_step_integration(rate_func_in, tspan, V0, h_ref, BT_list{i});
+    [t_list, V_list, ~, ~] = explicit_RK_fixed_step_integration(rate_func_in, tspan, V0, h_ref, BT_list{i});
     plot(t_list, V_list(1, :), '.-', 'MarkerSize', 8, 'LineWidth', 1.5, 'DisplayName', method_list{i});
 end
 % compute analytical solution
@@ -82,7 +82,7 @@ grid on;
 hold off;
 
 % plot orbit approximation
-[t_list, V_list, ~, ~] = explicit_RK_fixed_step_integration(rate_func_in, tspan, V0, h_ref, Heun2);
+[~, V_list, ~, ~] = explicit_RK_fixed_step_integration(rate_func_in, tspan, V0, h_ref, Heun2);
 figure;
 hold on;
 plot(V_list(1, :), V_list(2, :), '.-', 'MarkerSize', 8, 'LineWidth', 1.5, 'DisplayName', 'Numerical');
@@ -173,8 +173,9 @@ m_sun = orbit_params.m_sun;
 m_planet = orbit_params.m_planet;
 G = orbit_params.G;
 
-% define rate function handle
-rate_func_in = @(t,V) gravity_rate_func(t, V, orbit_params); 
+% define function handles
+rate_func_in = @(t,V) gravity_rate_func(t, V, orbit_params);
+step_func = @leapfrog_step;
 
 % define initial conditions for a circular orbit
 x0 = 1.495978707e11; % 1 astronomical unit in meters
@@ -205,7 +206,7 @@ BT_list = {Heun2, VanDerHouwenWray3, ClassicRK4};
 figure();
 for i=1:length(BT_list)
     % call the corresponding RK method
-    [t_list, V_list, h_avg, num_evals] = explicit_RK_fixed_step_integration(rate_func_in, tspan, V0, h_ref, BT_list{i});
+    [t_list, V_list, ~, ~] = explicit_RK_fixed_step_integration(rate_func_in, tspan, V0, h_ref, BT_list{i});
     
     x = V_list(1, :);
     y = V_list(2, :);
@@ -218,9 +219,26 @@ for i=1:length(BT_list)
     E_i = 0.5 * m_planet * (x_dot(1).^2 + y_dot(1).^2) - (m_sun * m_planet * G)./sqrt(x(1).^2 + y(1).^2);
     % normalized error in E
     E_err = (E - E_i) / abs(E_i);
-    plot(t_list, E_err, '.', 'MarkerSize', 8, 'LineWidth', 1.5, 'DisplayName', method_list{i});
+    plot(t_list, E_err, '.', 'MarkerSize', 8, 'DisplayName', method_list{i});
     hold on;
 end
+
+% call leapfrog method
+[t_list, V_list, ~, ~] = fixed_step_integration(rate_func_in, step_func, tspan, V0, h_ref);
+V_list = V_list';
+x = V_list(1, :);
+y = V_list(2, :);
+x_dot = V_list(3, :);
+y_dot = V_list(4, :);
+% calculate approximated E over time
+E = 0.5 * m_planet * (x_dot.^2 + y_dot.^2) - (m_sun * m_planet * G)./sqrt(x.^2 + y.^2);
+% initial state E
+E_i = 0.5 * m_planet * (x_dot(1).^2 + y_dot(1).^2) - (m_sun * m_planet * G)./sqrt(x(1).^2 + y(1).^2);
+% normalized error in E
+E_err = (E - E_i) / abs(E_i);
+plot(t_list, E_err, '.', 'MarkerSize', 8, 'DisplayName', 'Leapfrog');
+
+% plot aesthetics
 legend('Location', 'northwest');
 xlabel('Time');
 ylabel('Normalized Mechanical Energy Error');
@@ -233,14 +251,14 @@ hold off;
 figure();
 for i=1:length(BT_list)
     % call the corresponding RK method
-    [t_list, V_list, h_avg, num_evals] = explicit_RK_fixed_step_integration(rate_func_in, tspan, V0, h_ref, BT_list{i});
+    [t_list, V_list, ~, ~] = explicit_RK_fixed_step_integration(rate_func_in, tspan, V0, h_ref, BT_list{i});
     
     x = V_list(1, :);
     y = V_list(2, :);
     x_dot = V_list(3, :);
     y_dot = V_list(4, :);
     
-    % calculate approximated E over time
+    % calculate approximated H over time
     H = m_planet * (x .* y_dot - y .* x_dot);
     % initial state E
     H_i = m_planet * (x(1) .* y_dot(1) - y(1) .* x_dot(1));
@@ -249,6 +267,23 @@ for i=1:length(BT_list)
     plot(t_list, H_err, '.', 'MarkerSize', 8, 'LineWidth', 1.5, 'DisplayName', method_list{i});
     hold on;
 end
+
+% call leapfrog method
+[t_list, V_list, ~, ~] = fixed_step_integration(rate_func_in, step_func, tspan, V0, h_ref);
+V_list = V_list';
+x = V_list(1, :);
+y = V_list(2, :);
+x_dot = V_list(3, :);
+y_dot = V_list(4, :);
+% calculate approximated H over time
+H = m_planet * (x .* y_dot - y .* x_dot);
+% initial state E
+H_i = m_planet * (x(1) .* y_dot(1) - y(1) .* x_dot(1));
+% normalized error in E
+H_err = (H - H_i) / abs(H_i);
+plot(t_list, H_err, '.', 'MarkerSize', 8, 'LineWidth', 1.5, 'DisplayName', 'Leapfrog');
+
+% plot aesthetics
 legend('Location', 'northwest');
 xlabel('Time');
 ylabel('Normalized Angular Momentum Error');
@@ -257,46 +292,6 @@ title('Conservation of H between RK Methods');
 grid on;
 hold off;
 
-%% Test leap frog integration
-
-% define physical/orbital parameters
-orbit_params = struct();
-orbit_params.m_sun = 1.9891e30; % mass of sun (kg)
-orbit_params.m_planet = 5.972e24; % mass of earth (kg)
-orbit_params.G = 6.6743e-11; % gravitational constant
-
-% put them into variables for ease of use
-m_sun = orbit_params.m_sun;
-m_planet = orbit_params.m_planet;
-G = orbit_params.G;
-
-% define rate function handle
-rate_func_in = @(t,V) gravity_rate_func(t, V, orbit_params);
-step_func = @leapfrog_step;
-
-% define initial conditions for a circular orbit
-x0 = 1.495978707e11; % 1 astronomical unit in meters
-y0 = 0;
-r0 = sqrt(x0^2 + y0^2);
-
-% calculate velocity required for circular orbit (e = 0)
-% choose arbitrarily scaled down velocity for elliptical orbit
-scale_factor = 0.7;
-v0 = scale_factor*sqrt(orbit_params.G * orbit_params.m_sun / sqrt(x0^2 + y0^2));
-vx0 = 0; % velocity perpendicular to radius
-vy0 = v0; % counterclockwise motion
-
-V0 = [x0; y0; vx0; vy0]; % initial state vector
-
-% define time span (aim for 1.5 circular orbital period)
-a = r0; % semi-major axis is equivalent to radius of orbit
-T_orbit = 3*pi*sqrt(a^3/(orbit_params.G*orbit_params.m_sun));
-tspan = [0, T_orbit];
-
-h_ref = T_orbit/1000;
-
-[t_list, V_list, h_avg, num_evals] = fixed_step_integration(rate_func_in, step_func, tspan, V0, h_ref);
-plot(t_list, V_list(1, :), '.-', 'MarkerSize', 8, 'LineWidth', 1.5, 'DisplayName', 'Leapfrog');
 %% Analysis on differently ordered next step estimates
 
 % Dormand Prince Butcher Tableau
