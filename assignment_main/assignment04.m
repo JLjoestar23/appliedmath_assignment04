@@ -387,6 +387,125 @@ xlabel('|XB1-XB2|');
 ylabel('Local Truncation Error');
 legend('Location', 'northwest');
 grid on;
-axis tight;
+axis square;
 hold off;
 hold off;
+
+%% Testing Dormand Prince (orbit)
+
+% Dormand Prince Butcher Tableau
+DormandPrince = struct();
+DormandPrince.C = [0, 1/5, 3/10, 4/5, 8/9, 1, 1];
+DormandPrince.B = [35/384, 0, 500/1113, 125/192, -2187/6784, 11/84, 0;...
+                    5179/57600, 0, 7571/16695, 393/640, -92097/339200, 187/2100, 1/40];
+DormandPrince.A = [0,0,0,0,0,0,0;
+                    1/5, 0, 0, 0,0,0,0;...
+                    3/40, 9/40, 0, 0, 0, 0,0;...
+                    44/45, -56/15, 32/9, 0, 0, 0,0;...
+                    19372/6561, -25360/2187, 64448/6561, -212/729, 0, 0,0;...
+                    9017/3168, -355/33, 46732/5247, 49/176, -5103/18656, 0,0;...
+                    35/384, 0, 500/1113, 125/192, -2187/6784, 11/84,0];
+
+% define physical/orbital parameters
+orbit_params = struct();
+orbit_params.m_sun = 1.9891e30; % mass of sun (kg)
+orbit_params.m_planet = 5.972e24; % mass of earth (kg)
+orbit_params.G = 6.6743e-11; % gravitational constant
+m_sun = orbit_params.m_sun;
+m_planet = orbit_params.m_planet;
+G = orbit_params.G;
+
+% define rate function handle
+rate_func_in = @(t,V) gravity_rate_func(t, V, orbit_params); 
+
+% define initial conditions for a circular orbit
+x0 = 1.495978707e11; % 1 astronomical unit in meters
+y0 = 0;
+r0 = sqrt(x0^2 + y0^2);
+
+% calculate velocity required for circular orbit (e = 0)
+% choose arbitrarily scaled down velocity for elliptical orbit
+scale_factor = 0.8;
+v0 = scale_factor*sqrt(orbit_params.G * orbit_params.m_sun / sqrt(x0^2 + y0^2));
+vx0 = 0; % velocity perpendicular to radius
+vy0 = v0; % counterclockwise motion
+
+V0 = [x0; y0; vx0; vy0]; % initial state vector
+
+% define time span (aim for 1 circular orbital period)
+a = r0; % semi-major axis is equivalent to radius of orbit
+T_orbit = 2*pi*sqrt(a^3/(orbit_params.G*orbit_params.m_sun));
+tspan = [0, T_orbit];
+
+% compute analytical soln
+V_analytical = compute_planetary_motion(linspace(tspan(1), tspan(2), 1000), V0, orbit_params);
+
+% call the corresponding RK method
+[t_list, V_list, h_avg, ~] = explicit_RK_variable_step_integration(rate_func_in, tspan, V0, DormandPrince, 5, 1e-8);
+%options = odeset('AbsTol', 1e-12);
+%[t_list, V_list] = ode45(rate_func_in, tspan, V0, options);
+%V_list = V_list';
+
+figure;
+hold on;
+plot(t_list, V_list(1, :), '.-', 'MarkerSize', 8, 'DisplayName','DormandPrince');
+plot(linspace(tspan(1), tspan(2), 1000), V_analytical(:, 1), '-', 'LineWidth', 1.5, 'DisplayName', 'Analytical');
+legend();
+xlabel('Time');
+ylabel('X Position');
+xlim([t_list(1) t_list(end)]);
+title('Comparing RK Methods');
+grid on;
+hold off;
+
+% plot orbit approximation
+figure;
+hold on;
+plot(V_list(1, :), V_list(2, :), '.', 'MarkerSize', 8, 'DisplayName', 'Numerical');
+plot(V_analytical(:, 1), V_analytical(:, 2), '-', 'LineWidth', 1.5, 'DisplayName', 'Analytical')
+plot(0, 0, 'r.', 'MarkerSize', 20, 'DisplayName', 'sun');
+legend();
+xlabel('X Position');
+ylabel('Y Position');
+title('Orbit Comparison');
+grid on;
+axis equal;
+hold off;
+
+%% Testing Dormand Prince (2nd order)
+
+% Dormand Prince Butcher Tableau
+DormandPrince = struct();
+DormandPrince.C = [0, 1/5, 3/10, 4/5, 8/9, 1, 1];
+DormandPrince.B = [35/384, 0, 500/1113, 125/192, -2187/6784, 11/84, 0;...
+                    5179/57600, 0, 7571/16695, 393/640, -92097/339200, 187/2100, 1/40];
+DormandPrince.A = [0,0,0,0,0,0,0;
+                    1/5, 0, 0, 0,0,0,0;...
+                    3/40, 9/40, 0, 0, 0, 0,0;...
+                    44/45, -56/15, 32/9, 0, 0, 0,0;...
+                    19372/6561, -25360/2187, 64448/6561, -212/729, 0, 0,0;...
+                    9017/3168, -355/33, 46732/5247, 49/176, -5103/18656, 0,0;...
+                    35/384, 0, 500/1113, 125/192, -2187/6784, 11/84,0];
+
+% initializing function handles
+rate_func_in = @rate_func02;
+analytical_soln = @solution02;
+
+t = linspace(0, 2*pi, 500);
+X_analytical = analytical_soln(t);
+
+X0 = [1 ; 0];
+tspan = [0 2*pi];
+
+[t_list, X_list, h_avg, ~] = explicit_RK_variable_step_integration(rate_func_in, tspan, X0, DormandPrince, 5, 1e-6);
+
+plot(t_list, X_list(1, :), '.', 'MarkerSize', 10, 'DisplayName', 'DormandPrince');
+hold on;
+plot(t, X_analytical(1, :), '-', 'LineWidth', 1.5, 'DisplayName', 'Analytical');
+%{
+[t_list, X_list] = ode45(rate_func_in, tspan, X0);
+X_list = X_list';
+plot(t_list, X_list(1, :), '.-', 'MarkerSize', 8, 'LineWidth', 1.5, 'DisplayName', 'ode45');
+%}
+legend();
+grid on;
