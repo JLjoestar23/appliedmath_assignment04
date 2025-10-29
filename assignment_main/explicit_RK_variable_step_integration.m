@@ -17,28 +17,47 @@
 % X_list: the vector of X, [X0';X1';X2';...;(X_end)'] at each time step
 % h_avg: the average step size
 % num_evals: total number of calls made to rate_func_in during the integration
-function [t_list, X_list, h_avg, num_evals] = explicit_RK_variable_step_integration(rate_func_in, tspan, X0, BT_struct, p, error_desired)
-
-    % Actual step size
-    h_avg = (tspan(2) - tspan(1)) / N;
-
-    % Time vector
-    t_list = linspace(tspan(1), tspan(2), N+1);
-
-    % Preallocate solution array (each row = one time step)
-    X_list = zeros(length(X0), N+1);
-    X_list(:, 1) = X0;
-
-    num_evals = 0; % initialize counter
+function [t_list, X_list, h_avg, num_evals] = explicit_RK_variable_step_integration(rate_func_in, tspan, X0, BT_struct, p, desired_error)
     
-    for i = 1:N
-        % Evaluate next step
-        [XB, evals] = explicit_RK_step(rate_func_in, t_list(i), X_list(:, i), h_avg, BT_struct);
+    % intialize
+    t = tspan(1);
+    t_list(1) = t;
+    t_end = tspan(2);
+    XA = X0(:);
+    X_list = XA;
+    h = (t_end - t) / 500; % arbitrary value to iterate upon
+    num_evals = 0;
+    
+    % while time is within the timespan
+    while t < t_end
         
-        % Store result as row
-        X_list(:, i+1) = XB;
+        % in order to hit t_end exactly
+        if t + h > t_end
+            h = t_end - t;
+        end
 
+        % evaluate next step
+        [XB, current_evals, h_next, redo] = explicit_RK_variable_step(rate_func_in, t, XA, h, BT_struct, p, desired_error);
+        
+        % if |XB1-XB2| > desired_error
+        if redo
+            % update timestep
+            h = h_next;
+            continue
+        else
+            t = t + h; % update time
+            XA = XB; % update XA value
+            X_list(:, end+1) = XB; % store result as row
+            t_list(end+1) = t; % append new timestep
+            
+            % update timestep
+            h = h_next;
+        end
+        
         % Accumulate evaluations
-        num_evals = num_evals + evals;
+        num_evals = num_evals + current_evals;
     end
+
+    % compute average step size
+    h_avg = mean(diff(t_list));
 end

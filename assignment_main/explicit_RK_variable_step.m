@@ -52,20 +52,20 @@ function [XB, num_evals, h_next, redo] = explicit_RK_variable_step(rate_func_in,
     XB2 = XA + h * (K*B(2,:)');
 
     % various constants
-    alpha = 4; % step size increase factor cap
+    alpha = 6; % step size increase factor cap
     
     % approximate the local truncation error
     err = norm(XB1-XB2);
     
     % update timestep
-    h_next = min(0.9 * ((desired_error)/abs(XB1-XB2))^(1/p), alpha) * h;
+    h_next = min(alpha, 0.9*(desired_error/err).^(1/p)) * h;
     
     if err > desired_error
         XB = XA; % don't update next step estimate
         redo = true; % trigger a recalculation
     else
         % return XB if h is sufficient
-        XB = XA + h * (K*B(2,:)');
+        XB = XA + h * (K*B(1,:)');
         redo = false;
     end
     
