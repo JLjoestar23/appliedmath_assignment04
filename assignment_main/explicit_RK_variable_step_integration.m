@@ -17,7 +17,7 @@
 % X_list: the vector of X, [X0';X1';X2';...;(X_end)'] at each time step
 % h_avg: the average step size
 % num_evals: total number of calls made to rate_func_in during the integration
-function [t_list, X_list, h_avg, num_evals] = explicit_RK_variable_step_integration(rate_func_in, tspan, X0, BT_struct, p, desired_error)
+function [t_list, X_list, h_avg, num_evals, fail_fraction] = explicit_RK_variable_step_integration(rate_func_in, tspan, X0, BT_struct, p, desired_error)
     
     % intialize
     t = tspan(1);
@@ -27,6 +27,8 @@ function [t_list, X_list, h_avg, num_evals] = explicit_RK_variable_step_integrat
     X_list = XA;
     h = (t_end - t) / 500; % arbitrary value to iterate upon
     num_evals = 0;
+    failed_steps = 0;
+    attempted_steps = 0;
     
     % while time is within the timespan
     while t < t_end
@@ -43,6 +45,8 @@ function [t_list, X_list, h_avg, num_evals] = explicit_RK_variable_step_integrat
         if redo
             % update timestep
             h = h_next;
+            failed_steps = failed_steps + 1;
+            attempted_steps = attempted_steps + 1;
             continue
         else
             t = t + h; % update time
@@ -52,6 +56,8 @@ function [t_list, X_list, h_avg, num_evals] = explicit_RK_variable_step_integrat
             
             % update timestep
             h = h_next;
+
+            attempted_steps = attempted_steps + 1;
         end
         
         % Accumulate evaluations
@@ -60,4 +66,7 @@ function [t_list, X_list, h_avg, num_evals] = explicit_RK_variable_step_integrat
 
     % compute average step size
     h_avg = mean(diff(t_list));
+    
+    % compute fail fraction
+    fail_fraction = failed_steps / attempted_steps;
 end

@@ -21,7 +21,7 @@ function [XB, num_evals] = explicit_RK_step(rate_func_in, t, XA, h, BT_struct)
     
     % parse the struct
     A = BT_struct.A;
-    B = BT_struct.B;
+    B = BT_struct.B(1,:);
     C = BT_struct.C;
     
     % order of the chosen method
