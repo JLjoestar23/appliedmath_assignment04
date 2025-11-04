@@ -60,7 +60,7 @@ tspan = [0, T_orbit];
 h_ref = T_orbit/100; % want to plot 100 points to exaggerate error
 
 % Plot orbit
-method_list = {'2nd Order', '3rd Order', '4th Order'};
+method_list = {'Huen2', 'VDHWray3', 'RK4'};
 BT_list = {Heun2, VanDerHouwenWray3, ClassicRK4};
 
 figure;
@@ -158,7 +158,7 @@ BT_list = {Heun2, VanDerHouwenWray3, ClassicRK4}; % define RK method list
 rate_func_in = @(t,V) gravity_rate_func(t, V, orbit_params); % define rate function handle
 analytical_soln = @(t) compute_planetary_motion(t, V0, orbit_params);
 
-global_trunc_error_analysis(BT_list, rate_func_in, analytical_soln, tspan, 100);
+global_trunc_error_analysis(BT_list, rate_func_in, analytical_soln, tspan, 250);
 
 %% Conservation of physical quantities
 
