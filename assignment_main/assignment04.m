@@ -587,9 +587,9 @@ r = sqrt(V_list(1, :).^2 + V_list(2, :).^2);
 h_list = diff(t_list);
 
 figure();
-loglog(h_list, r(1:end-1), '.', 'MarkerSize', 5)
-xlabel('Timestep Size (s)');
-ylabel('Orbit Radius (m)');
+loglog(r(1:end-1), h_list, 'b.', 'MarkerSize', 5)
+xlabel('Orbit Radius (m)');
+ylabel('Timestep Size (s)');
 title('Timestep Size vs Orbit Radius');
 grid on;
 axis tight;
